@@ -1,0 +1,14 @@
+builds:
+  - id: vidai
+    binary: vidai
+    main: ./cmd/vidai
+    goarch:
+      - amd64
+      - arm64
+      - arm
+archives:
+  - id: vidai
+    builds:
+      - vidai
+    format: zip
+    name_template: 'vidai_{{ .Version }}_{{- if eq .Os "darwin" }}macos{{- else }}{{ .Os }}{{ end }}_{{ .Arch }}'
