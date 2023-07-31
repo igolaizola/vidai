@@ -55,9 +55,12 @@ func (c *Client) Generate(ctx context.Context, image, text, output string,
 	}
 	name := filepath.Base(image)
 
-	imageURL, err := c.client.Upload(ctx, name, b)
-	if err != nil {
-		return nil, fmt.Errorf("vidai: couldn't upload image: %w", err)
+	var imageURL string
+	if image != "" {
+		imageURL, err = c.client.Upload(ctx, name, b)
+		if err != nil {
+			return nil, fmt.Errorf("vidai: couldn't upload image: %w", err)
+		}
 	}
 	videoURL, err := c.client.Generate(ctx, imageURL, text, interpolate, upscale, watermark)
 	if err != nil {
