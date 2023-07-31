@@ -110,8 +110,8 @@ func newGenerateCommand() *ffcli.Command {
 			if cfg.Token == "" {
 				return fmt.Errorf("token is required")
 			}
-			if *image == "" {
-				return fmt.Errorf("image is required")
+			if *image == "" && *text == "" {
+				return fmt.Errorf("image or text is required")
 			}
 			c := vidai.New(&cfg)
 			urls, err := c.Generate(ctx, *image, *text, *output, *extend,
