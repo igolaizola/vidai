@@ -7,6 +7,7 @@ This is a CLI tool for [RunwayML Gen-2](https://runwayml.com/) that adds some ex
 ## 🚀 Features 
 
  - Generate videos directly from the command line using a text or image prompt.
+ - Use RunwayML's extend feature to generate longer videos.
  - Create or extend videos longer than 4 seconds by reusing the last frame of the video as the input for the next generation.
  - Other handy tools to edit videos, like generating loops or resizing videos.
 
@@ -40,6 +41,12 @@ Generate a video from a text prompt:
 
 ```bash
 vidai generate --token RUNWAYML_TOKEN --text "a car in the middle of the road" --output car.mp4
+```
+
+Generate a video from a image prompt and extend it twice (using RunwayML's extend feature):
+
+```bash
+vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4 --extend 2
 ```
 
 Extend a video by reusing the last frame twice:

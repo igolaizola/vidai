@@ -198,14 +198,18 @@ type createTaskRequest struct {
 }
 
 type gen2Options struct {
-	Interpolate bool   `json:"interpolate"`
-	Seed        int    `json:"seed"`
-	Upscale     bool   `json:"upscale"`
-	TextPrompt  string `json:"text_prompt"`
-	Watermark   bool   `json:"watermark"`
-	ImagePrompt string `json:"image_prompt"`
-	InitImage   string `json:"init_image"`
-	Mode        string `json:"mode"`
+	Interpolate      bool   `json:"interpolate"`
+	Seed             int    `json:"seed"`
+	Upscale          bool   `json:"upscale"`
+	TextPrompt       string `json:"text_prompt"`
+	Watermark        bool   `json:"watermark"`
+	ImagePrompt      string `json:"image_prompt,omitempty"`
+	InitImage        string `json:"init_image,omitempty"`
+	Mode             string `json:"mode"`
+	InitVideo        string `json:"init_video,omitempty"`
+	MotionScore      int    `json:"motion_score"`
+	UseMotionScore   bool   `json:"use_motion_score"`
+	UseMotionVectors bool   `json:"use_motion_vectors"`
 }
 
 type taskResponse struct {
@@ -243,7 +247,7 @@ type artifact struct {
 	ParentAssetGroupId string   `json:"parentAssetGroupId"`
 	Filename           string   `json:"filename"`
 	URL                string   `json:"url"`
-	FileSize           int      `json:"fileSize"`
+	FileSize           string   `json:"fileSize"`
 	IsDirectory        bool     `json:"isDirectory"`
 	PreviewURLs        []string `json:"previewUrls"`
 	Private            bool     `json:"private"`
@@ -251,13 +255,13 @@ type artifact struct {
 	Deleted            bool     `json:"deleted"`
 	Reported           bool     `json:"reported"`
 	Metadata           struct {
-		FrameRate  int   `json:"frameRate"`
-		Duration   int   `json:"duration"`
-		Dimensions []int `json:"dimensions"`
+		FrameRate  int     `json:"frameRate"`
+		Duration   float32 `json:"duration"`
+		Dimensions []int   `json:"dimensions"`
 	} `json:"metadata"`
 }
 
-func (c *Client) Generate(ctx context.Context, imageURL, textPrompt string, interpolate, upscale, watermark bool) (string, error) {
+func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, interpolate, upscale, watermark, extend bool) (string, error) {
 	// Load team ID
 	if err := c.loadTeamID(ctx); err != nil {
 		return "", fmt.Errorf("runway: couldn't load team id: %w", err)
@@ -265,6 +269,14 @@ func (c *Client) Generate(ctx context.Context, imageURL, textPrompt string, inte
 
 	// Generate seed
 	seed := rand.Intn(1000000000)
+
+	var imageURL string
+	var videoURL string
+	if extend {
+		videoURL = assetURL
+	} else {
+		imageURL = assetURL
+	}
 
 	// Create task
 	createReq := &createTaskRequest{
@@ -279,14 +291,17 @@ func (c *Client) Generate(ctx context.Context, imageURL, textPrompt string, inte
 		}{
 			Seconds: 4,
 			Gen2Options: gen2Options{
-				Interpolate: interpolate,
-				Seed:        seed,
-				Upscale:     upscale,
-				TextPrompt:  textPrompt,
-				Watermark:   watermark,
-				ImagePrompt: imageURL,
-				InitImage:   imageURL,
-				Mode:        "gen2",
+				Interpolate:    interpolate,
+				Seed:           seed,
+				Upscale:        upscale,
+				TextPrompt:     textPrompt,
+				Watermark:      watermark,
+				ImagePrompt:    imageURL,
+				InitImage:      imageURL,
+				InitVideo:      videoURL,
+				Mode:           "gen2",
+				UseMotionScore: true,
+				MotionScore:    22,
 			},
 			Name:           fmt.Sprintf("Gen-2, %d", seed),
 			AssetGroupName: "Gen-2",
