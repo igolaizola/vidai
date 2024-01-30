@@ -114,12 +114,12 @@ func newGenerateCommand() *ffcli.Command {
 				return fmt.Errorf("image or text is required")
 			}
 			c := vidai.New(&cfg)
-			u, err := c.Generate(ctx, *image, *text, *output, *extend,
+			id, u, err := c.Generate(ctx, *image, *text, *output, *extend,
 				*interpolate, *upscale, *watermark)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Video URL: %s\n", u)
+			fmt.Printf("ID: %s URL: %s\n", id, u)
 			return nil
 		},
 	}

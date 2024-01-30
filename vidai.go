@@ -48,10 +48,10 @@ func New(cfg *Config) *Client {
 
 // Generate generates a video from an image and a text prompt.
 func (c *Client) Generate(ctx context.Context, image, text, output string,
-	extend int, interpolate, upscale, watermark bool) (string, error) {
+	extend int, interpolate, upscale, watermark bool) (string, string, error) {
 	b, err := os.ReadFile(image)
 	if err != nil {
-		return "", fmt.Errorf("vidai: couldn't read image: %w", err)
+		return "", "", fmt.Errorf("vidai: couldn't read image: %w", err)
 	}
 	name := filepath.Base(image)
 
@@ -59,19 +59,19 @@ func (c *Client) Generate(ctx context.Context, image, text, output string,
 	if image != "" {
 		imageURL, err = c.client.Upload(ctx, name, b)
 		if err != nil {
-			return "", fmt.Errorf("vidai: couldn't upload image: %w", err)
+			return "", "", fmt.Errorf("vidai: couldn't upload image: %w", err)
 		}
 	}
-	videoURL, err := c.client.Generate(ctx, imageURL, text, interpolate, upscale, watermark, false)
+	id, videoURL, err := c.client.Generate(ctx, imageURL, text, interpolate, upscale, watermark, false)
 	if err != nil {
-		return "", fmt.Errorf("vidai: couldn't generate video: %w", err)
+		return "", "", fmt.Errorf("vidai: couldn't generate video: %w", err)
 	}
 
 	// Extend video
 	for i := 0; i < extend; i++ {
-		videoURL, err = c.client.Generate(ctx, videoURL, "", interpolate, upscale, watermark, true)
+		id, videoURL, err = c.client.Generate(ctx, videoURL, "", interpolate, upscale, watermark, true)
 		if err != nil {
-			return "", fmt.Errorf("vidai: couldn't extend video: %w", err)
+			return "", "", fmt.Errorf("vidai: couldn't extend video: %w", err)
 		}
 	}
 
@@ -85,11 +85,11 @@ func (c *Client) Generate(ctx context.Context, image, text, output string,
 	// Download video
 	if videoPath != "" {
 		if err := c.download(ctx, videoURL, videoPath); err != nil {
-			return "", fmt.Errorf("vidai: couldn't download video: %w", err)
+			return "", "", fmt.Errorf("vidai: couldn't download video: %w", err)
 		}
 	}
 
-	return videoURL, nil
+	return id, videoURL, nil
 }
 
 // Extend extends a video using the previous video.
@@ -131,7 +131,7 @@ func (c *Client) Extend(ctx context.Context, input, output string, n int,
 		if err != nil {
 			return nil, fmt.Errorf("vidai: couldn't upload image: %w", err)
 		}
-		videoURL, err := c.client.Generate(ctx, imageURL, "", interpolate, upscale, watermark, false)
+		_, videoURL, err := c.client.Generate(ctx, imageURL, "", interpolate, upscale, watermark, false)
 		if err != nil {
 			return nil, fmt.Errorf("vidai: couldn't generate video: %w", err)
 		}
@@ -182,6 +182,11 @@ func (c *Client) Extend(ctx context.Context, input, output string, n int,
 	}
 
 	return urls, nil
+}
+
+// URL returns the URL of a video.
+func (c *Client) URL(ctx context.Context, id string) (string, error) {
+	return c.client.GetAsset(ctx, id)
 }
 
 func (c *Client) download(ctx context.Context, url, output string) error {

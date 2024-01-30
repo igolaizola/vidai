@@ -241,13 +241,16 @@ type artifact struct {
 	ID                 string   `json:"id"`
 	CreatedAt          string   `json:"createdAt"`
 	UpdatedAt          string   `json:"updatedAt"`
+	Name               string   `json:"name"`
+	MediaType          string   `json:"mediaType"`
 	UserID             int      `json:"userId"`
 	CreatedBy          int      `json:"createdBy"`
 	TaskID             string   `json:"taskId"`
 	ParentAssetGroupId string   `json:"parentAssetGroupId"`
 	Filename           string   `json:"filename"`
 	URL                string   `json:"url"`
-	FileSize           string   `json:"fileSize"`
+	FileSize           any      `json:"fileSize"`
+	FileExtension      string   `json:"fileExtStandardized"`
 	IsDirectory        bool     `json:"isDirectory"`
 	PreviewURLs        []string `json:"previewUrls"`
 	Private            bool     `json:"private"`
@@ -261,10 +264,10 @@ type artifact struct {
 	} `json:"metadata"`
 }
 
-func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, interpolate, upscale, watermark, extend bool) (string, error) {
+func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, interpolate, upscale, watermark, extend bool) (string, string, error) {
 	// Load team ID
 	if err := c.loadTeamID(ctx); err != nil {
-		return "", fmt.Errorf("runway: couldn't load team id: %w", err)
+		return "", "", fmt.Errorf("runway: couldn't load team id: %w", err)
 	}
 
 	// Generate seed
@@ -311,7 +314,7 @@ func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, inte
 	}
 	var taskResp taskResponse
 	if err := c.do(ctx, "POST", "tasks", createReq, &taskResp); err != nil {
-		return "", fmt.Errorf("runway: couldn't create task: %w", err)
+		return "", "", fmt.Errorf("runway: couldn't create task: %w", err)
 	}
 
 	// Wait for task to finish
@@ -319,27 +322,28 @@ func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, inte
 		switch taskResp.Task.Status {
 		case "SUCCEEDED":
 			if len(taskResp.Task.Artifacts) == 0 {
-				return "", fmt.Errorf("runway: no artifacts returned")
+				return "", "", fmt.Errorf("runway: no artifacts returned")
 			}
-			if taskResp.Task.Artifacts[0].URL == "" {
-				return "", fmt.Errorf("runway: empty artifact url")
+			artifact := taskResp.Task.Artifacts[0]
+			if artifact.URL == "" {
+				return "", "", fmt.Errorf("runway: empty artifact url")
 			}
-			return taskResp.Task.Artifacts[0].URL, nil
+			return artifact.ID, artifact.URL, nil
 		case "PENDING", "RUNNING":
 			c.log("runway: task %s: %s", taskResp.Task.ID, taskResp.Task.ProgressRatio)
 		default:
-			return "", fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
+			return "", "", fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
 		}
 
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("runway: %w", ctx.Err())
+			return "", "", fmt.Errorf("runway: %w", ctx.Err())
 		case <-time.After(5 * time.Second):
 		}
 
 		path := fmt.Sprintf("tasks/%s?asTeamId=%d", taskResp.Task.ID, c.teamID)
 		if err := c.do(ctx, "GET", path, nil, &taskResp); err != nil {
-			return "", fmt.Errorf("runway: couldn't get task: %w", err)
+			return "", "", fmt.Errorf("runway: couldn't get task: %w", err)
 		}
 	}
 }
@@ -351,7 +355,10 @@ type assetDeleteResponse struct {
 	Success bool `json:"success"`
 }
 
-// TODO: Delete asset by url instead
+type assetResponse struct {
+	Asset artifact `json:"asset"`
+}
+
 func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 	path := fmt.Sprintf("assets/%s", id)
 	var resp assetDeleteResponse
@@ -362,6 +369,18 @@ func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 		return fmt.Errorf("runway: couldn't delete asset %s", id)
 	}
 	return nil
+}
+
+func (c *Client) GetAsset(ctx context.Context, id string) (string, error) {
+	path := fmt.Sprintf("assets/%s", id)
+	var resp assetResponse
+	if err := c.do(ctx, "GET", path, nil, &resp); err != nil {
+		return "", fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
+	}
+	if resp.Asset.URL == "" {
+		return "", fmt.Errorf("runway: empty asset url")
+	}
+	return resp.Asset.URL, nil
 }
 
 func (c *Client) log(format string, args ...interface{}) {
