@@ -4,7 +4,7 @@
 
 This is a CLI tool for [RunwayML Gen-2](https://runwayml.com/) that adds some extra features on top of it.
 
-> 📢 Connect with us! Join our Telegram group for support and collaboration: [t.me/igolaizola_com](https://t.me/igolaizola_com)
+> 📢 Connect with us! Join our Telegram group for support and collaboration: [t.me/igohub](https://t.me/igohub)
 
 ## 🚀 Features 
 
