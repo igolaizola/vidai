@@ -1,58 +1,15 @@
 package runway
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"math/rand"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/igolaizola/vidai/internal/ratelimit"
 )
-
-type Client struct {
-	client    *http.Client
-	debug     bool
-	ratelimit ratelimit.Lock
-	token     string
-	teamID    int
-}
-
-type Config struct {
-	Token  string
-	Wait   time.Duration
-	Debug  bool
-	Client *http.Client
-}
-
-func New(cfg *Config) *Client {
-	wait := cfg.Wait
-	if wait == 0 {
-		wait = 1 * time.Second
-	}
-	client := cfg.Client
-	if client == nil {
-		client = &http.Client{
-			Timeout: 2 * time.Minute,
-		}
-	}
-	return &Client{
-		client:    client,
-		ratelimit: ratelimit.New(wait),
-		debug:     cfg.Debug,
-		token:     cfg.Token,
-	}
-}
 
 type profileResponse struct {
 	User struct {
@@ -83,7 +40,7 @@ func (c *Client) loadTeamID(ctx context.Context) error {
 		return nil
 	}
 	var resp profileResponse
-	if err := c.do(ctx, "GET", "profile", nil, &resp); err != nil {
+	if _, err := c.do(ctx, "GET", "profile", nil, &resp); err != nil {
 		return fmt.Errorf("runway: couldn't get profile: %w", err)
 	}
 	if len(resp.User.Organizations) > 0 {
@@ -145,7 +102,7 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 			Type:          t,
 		}
 		var uploadResp uploadResponse
-		if err := c.do(ctx, "POST", "uploads", uploadReq, &uploadResp); err != nil {
+		if _, err := c.do(ctx, "POST", "uploads", uploadReq, &uploadResp); err != nil {
 			return "", fmt.Errorf("runway: couldn't obtain upload url: %w", err)
 		}
 		if len(uploadResp.UploadURLs) == 0 {
@@ -154,7 +111,7 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 
 		// Upload file
 		uploadURL := uploadResp.UploadURLs[0]
-		if err := c.do(ctx, "PUT", uploadURL, file, nil); err != nil {
+		if _, err := c.do(ctx, "PUT", uploadURL, file, nil); err != nil {
 			return "", fmt.Errorf("runway: couldn't upload file: %w", err)
 		}
 
@@ -172,7 +129,7 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 			},
 		}
 		var completeResp uploadCompleteResponse
-		if err := c.do(ctx, "POST", completeURL, completeReq, &completeResp); err != nil {
+		if _, err := c.do(ctx, "POST", completeURL, completeReq, &completeResp); err != nil {
 			return "", fmt.Errorf("runway: couldn't complete upload: %w", err)
 		}
 		c.log("runway: upload complete %s", completeResp.URL)
@@ -184,7 +141,7 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 	return imageURL, nil
 }
 
-type createTaskRequest struct {
+type createGen2TaskRequest struct {
 	TaskType string `json:"taskType"`
 	Internal bool   `json:"internal"`
 	Options  struct {
@@ -210,23 +167,38 @@ type gen2Options struct {
 	MotionScore      int    `json:"motion_score"`
 	UseMotionScore   bool   `json:"use_motion_score"`
 	UseMotionVectors bool   `json:"use_motion_vectors"`
+	Width            int    `json:"width"`
+	Height           int    `json:"height"`
+}
+
+type createGen3TaskRequest struct {
+	TaskType string      `json:"taskType"`
+	Internal bool        `json:"internal"`
+	Options  gen3Options `json:"options"`
+	AsTeamID int         `json:"asTeamId"`
+}
+
+type gen3Options struct {
+	Name           string `json:"name"`
+	Seconds        int    `json:"seconds"`
+	TextPrompt     string `json:"text_prompt"`
+	Seed           int    `json:"seed"`
+	ExploreMode    bool   `json:"exploreMode"`
+	Watermark      bool   `json:"watermark"`
+	EnhancePrompt  bool   `json:"enhance_prompt"`
+	Width          int    `json:"width"`
+	Height         int    `json:"height"`
+	AssetGroupName string `json:"assetGroupName"`
 }
 
 type taskResponse struct {
 	Task struct {
-		ID        string `json:"id"`
-		Name      string `json:"name"`
-		CreatedAt string `json:"createdAt"`
-		UpdatedAt string `json:"updatedAt"`
-		TaskType  string `json:"taskType"`
-		Options   struct {
-			Seconds        int         `json:"seconds"`
-			Gen2Options    gen2Options `json:"gen2Options"`
-			Name           string      `json:"name"`
-			AssetGroupName string      `json:"assetGroupName"`
-			ExploreMode    bool        `json:"exploreMode"`
-			Recording      bool        `json:"recordingEnabled"`
-		} `json:"options"`
+		ID                          string      `json:"id"`
+		Name                        string      `json:"name"`
+		CreatedAt                   string      `json:"createdAt"`
+		UpdatedAt                   string      `json:"updatedAt"`
+		TaskType                    string      `json:"taskType"`
+		Options                     any         `json:"options"`
 		Status                      string      `json:"status"`
 		ProgressText                string      `json:"progressText"`
 		ProgressRatio               string      `json:"progressRatio"`
@@ -241,8 +213,6 @@ type artifact struct {
 	ID                 string   `json:"id"`
 	CreatedAt          string   `json:"createdAt"`
 	UpdatedAt          string   `json:"updatedAt"`
-	Name               string   `json:"name"`
-	MediaType          string   `json:"mediaType"`
 	UserID             int      `json:"userId"`
 	CreatedBy          int      `json:"createdBy"`
 	TaskID             string   `json:"taskId"`
@@ -261,60 +231,123 @@ type artifact struct {
 		FrameRate  int     `json:"frameRate"`
 		Duration   float32 `json:"duration"`
 		Dimensions []int   `json:"dimensions"`
+		Size       struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		} `json:"size"`
 	} `json:"metadata"`
 }
 
-func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, interpolate, upscale, watermark, extend bool) (string, string, error) {
+type Generation struct {
+	ID          string   `json:"id"`
+	URL         string   `json:"url"`
+	PreviewURLs []string `json:"previewUrls"`
+}
+
+type GenerateRequest struct {
+	Model       string
+	AssetURL    string
+	Prompt      string
+	Interpolate bool
+	Upscale     bool
+	Watermark   bool
+	Extend      bool
+	Width       int
+	Height      int
+}
+
+func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generation, error) {
 	// Load team ID
 	if err := c.loadTeamID(ctx); err != nil {
-		return "", "", fmt.Errorf("runway: couldn't load team id: %w", err)
+		return nil, fmt.Errorf("runway: couldn't load team id: %w", err)
 	}
 
-	// Generate seed
-	seed := rand.Intn(1000000000)
+	// Generate seed between 2000000000 and 2999999999
+	seed := rand.Intn(1000000000) + 2000000000
 
 	var imageURL string
 	var videoURL string
-	if extend {
-		videoURL = assetURL
+	if cfg.Extend {
+		videoURL = cfg.AssetURL
 	} else {
-		imageURL = assetURL
+		imageURL = cfg.AssetURL
+	}
+
+	width := cfg.Width
+	height := cfg.Height
+	if width == 0 || height == 0 {
+		width = 1280
+		height = 768
 	}
 
 	// Create task
-	createReq := &createTaskRequest{
-		TaskType: "gen2",
-		Internal: false,
-		Options: struct {
-			Seconds        int         `json:"seconds"`
-			Gen2Options    gen2Options `json:"gen2Options"`
-			Name           string      `json:"name"`
-			AssetGroupName string      `json:"assetGroupName"`
-			ExploreMode    bool        `json:"exploreMode"`
-		}{
-			Seconds: 4,
-			Gen2Options: gen2Options{
-				Interpolate:    interpolate,
-				Seed:           seed,
-				Upscale:        upscale,
-				TextPrompt:     textPrompt,
-				Watermark:      watermark,
-				ImagePrompt:    imageURL,
-				InitImage:      imageURL,
-				InitVideo:      videoURL,
-				Mode:           "gen2",
-				UseMotionScore: true,
-				MotionScore:    22,
+	var createReq any
+	switch cfg.Model {
+	case "gen2":
+		name := fmt.Sprintf("Gen-2 %d, %s", seed, cfg.Prompt)
+		if len(name) > 44 {
+			name = name[:44]
+		}
+		createReq = &createGen2TaskRequest{
+			TaskType: "gen2",
+			Internal: false,
+			Options: struct {
+				Seconds        int         `json:"seconds"`
+				Gen2Options    gen2Options `json:"gen2Options"`
+				Name           string      `json:"name"`
+				AssetGroupName string      `json:"assetGroupName"`
+				ExploreMode    bool        `json:"exploreMode"`
+			}{
+				Seconds: 4,
+				Gen2Options: gen2Options{
+					Interpolate:    cfg.Interpolate,
+					Seed:           seed,
+					Upscale:        cfg.Upscale,
+					TextPrompt:     cfg.Prompt,
+					Watermark:      cfg.Watermark,
+					ImagePrompt:    imageURL,
+					InitImage:      imageURL,
+					InitVideo:      videoURL,
+					Mode:           "gen2",
+					UseMotionScore: true,
+					MotionScore:    22,
+					Width:          width,
+					Height:         height,
+				},
+				Name:           name,
+				AssetGroupName: "Generative Video",
+				ExploreMode:    false,
 			},
-			Name:           fmt.Sprintf("Gen-2, %d", seed),
-			AssetGroupName: "Gen-2",
-			ExploreMode:    false,
-		},
-		AsTeamID: c.teamID,
+			AsTeamID: c.teamID,
+		}
+	case "gen3":
+		name := fmt.Sprintf("Gen-3 Alpha %d, %s", seed, cfg.Prompt)
+		if len(name) > 44 {
+			name = name[:44]
+		}
+		createReq = &createGen3TaskRequest{
+			TaskType: "europa",
+			Internal: false,
+			Options: gen3Options{
+				Name:           name,
+				Seconds:        10,
+				TextPrompt:     cfg.Prompt,
+				Seed:           seed,
+				ExploreMode:    false,
+				Watermark:      cfg.Watermark,
+				EnhancePrompt:  true,
+				Width:          width,
+				Height:         height,
+				AssetGroupName: "Generative Video",
+			},
+			AsTeamID: c.teamID,
+		}
+	default:
+		return nil, fmt.Errorf("runway: unknown model %s", cfg.Model)
 	}
 	var taskResp taskResponse
-	if err := c.do(ctx, "POST", "tasks", createReq, &taskResp); err != nil {
-		return "", "", fmt.Errorf("runway: couldn't create task: %w", err)
+	if _, err := c.do(ctx, "POST", "tasks", createReq, &taskResp); err != nil {
+		return nil, fmt.Errorf("runway: couldn't create task: %w", err)
 	}
 
 	// Wait for task to finish
@@ -322,28 +355,32 @@ func (c *Client) Generate(ctx context.Context, assetURL, textPrompt string, inte
 		switch taskResp.Task.Status {
 		case "SUCCEEDED":
 			if len(taskResp.Task.Artifacts) == 0 {
-				return "", "", fmt.Errorf("runway: no artifacts returned")
+				return nil, fmt.Errorf("runway: no artifacts returned")
 			}
 			artifact := taskResp.Task.Artifacts[0]
 			if artifact.URL == "" {
-				return "", "", fmt.Errorf("runway: empty artifact url")
+				return nil, fmt.Errorf("runway: empty artifact url")
 			}
-			return artifact.ID, artifact.URL, nil
+			return &Generation{
+				ID:          artifact.ID,
+				URL:         artifact.URL,
+				PreviewURLs: artifact.PreviewURLs,
+			}, nil
 		case "PENDING", "RUNNING":
 			c.log("runway: task %s: %s", taskResp.Task.ID, taskResp.Task.ProgressRatio)
 		default:
-			return "", "", fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
+			return nil, fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
 		}
 
 		select {
 		case <-ctx.Done():
-			return "", "", fmt.Errorf("runway: %w", ctx.Err())
+			return nil, fmt.Errorf("runway: %w", ctx.Err())
 		case <-time.After(5 * time.Second):
 		}
 
 		path := fmt.Sprintf("tasks/%s?asTeamId=%d", taskResp.Task.ID, c.teamID)
-		if err := c.do(ctx, "GET", path, nil, &taskResp); err != nil {
-			return "", "", fmt.Errorf("runway: couldn't get task: %w", err)
+		if _, err := c.do(ctx, "GET", path, nil, &taskResp); err != nil {
+			return nil, fmt.Errorf("runway: couldn't get task: %w", err)
 		}
 	}
 }
@@ -362,7 +399,7 @@ type assetResponse struct {
 func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 	path := fmt.Sprintf("assets/%s", id)
 	var resp assetDeleteResponse
-	if err := c.do(ctx, "DELETE", path, &assetDeleteRequest{}, &resp); err != nil {
+	if _, err := c.do(ctx, "DELETE", path, &assetDeleteRequest{}, &resp); err != nil {
 		return fmt.Errorf("runway: couldn't delete asset %s: %w", id, err)
 	}
 	if !resp.Success {
@@ -374,7 +411,7 @@ func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 func (c *Client) GetAsset(ctx context.Context, id string) (string, error) {
 	path := fmt.Sprintf("assets/%s", id)
 	var resp assetResponse
-	if err := c.do(ctx, "GET", path, nil, &resp); err != nil {
+	if _, err := c.do(ctx, "GET", path, nil, &resp); err != nil {
 		return "", fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
 	}
 	if resp.Asset.URL == "" {
@@ -383,166 +420,17 @@ func (c *Client) GetAsset(ctx context.Context, id string) (string, error) {
 	return resp.Asset.URL, nil
 }
 
-func (c *Client) log(format string, args ...interface{}) {
-	if c.debug {
-		format += "\n"
-		log.Printf(format, args...)
-	}
-}
-
-var backoff = []time.Duration{
-	30 * time.Second,
-	1 * time.Minute,
-	2 * time.Minute,
-}
-
-func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
-	maxAttempts := 3
-	attempts := 0
-	var err error
-	for {
-		if err != nil {
-			log.Println("retrying...", err)
-		}
-		err = c.doAttempt(ctx, method, path, in, out)
-		if err == nil {
-			return nil
-		}
-		// Increase attempts and check if we should stop
-		attempts++
-		if attempts >= maxAttempts {
-			return err
-		}
-		// If the error is temporary retry
-		var netErr net.Error
-		if errors.As(err, &netErr) && netErr.Timeout() {
-			continue
-		}
-		// Check status code
-		var errStatus errStatusCode
-		if errors.As(err, &errStatus) {
-			switch int(errStatus) {
-			// These errors are retriable but we should wait before retry
-			case http.StatusBadGateway, http.StatusGatewayTimeout, http.StatusTooManyRequests:
-			default:
-				return err
-			}
-
-			idx := attempts - 1
-			if idx >= len(backoff) {
-				idx = len(backoff) - 1
-			}
-			wait := backoff[idx]
-			c.log("server seems to be down, waiting %s before retrying\n", wait)
-			t := time.NewTimer(wait)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-t.C:
-			}
-			continue
-		}
-		return err
-	}
-}
-
-type errStatusCode int
-
-func (e errStatusCode) Error() string {
-	return fmt.Sprintf("%d", e)
-}
-
-func (c *Client) doAttempt(ctx context.Context, method, path string, in, out any) error {
-	var body []byte
-	var reqBody io.Reader
-	contentType := "application/json"
-	if f, ok := in.(*uploadFile); ok {
-		body = f.data
-		ext := f.extension
-		if ext == "jpg" {
-			ext = "jpeg"
-		}
-		contentType = fmt.Sprintf("image/%s", ext)
-		reqBody = bytes.NewReader(body)
-	} else if in != nil {
-		var err error
-		body, err = json.Marshal(in)
-		if err != nil {
-			return fmt.Errorf("runway: couldn't marshal request body: %w", err)
-		}
-		reqBody = bytes.NewReader(body)
-	}
-	logBody := string(body)
-	if len(logBody) > 100 {
-		logBody = logBody[:100] + "..."
-	}
-	c.log("runway: do %s %s %s", method, path, logBody)
-
-	// Check if path is absolute
-	u := fmt.Sprintf("https://api.runwayml.com/v1/%s", path)
-	var uploadLen int
-	if strings.HasPrefix(path, "http") {
-		u = path
-		uploadLen = len(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, u, reqBody)
+func (c *Client) Download(ctx context.Context, u, output string) error {
+	b, err := c.do(ctx, "GET", u, nil, nil)
 	if err != nil {
-		return fmt.Errorf("runway: couldn't create request: %w", err)
+		return fmt.Errorf("runway: couldn't download video: %w", err)
 	}
-	c.addHeaders(req, contentType, uploadLen)
-
-	unlock := c.ratelimit.Lock(ctx)
-	defer unlock()
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("runway: couldn't %s %s: %w", method, u, err)
+	// Write video to output
+	if err := os.MkdirAll(filepath.Dir(output), 0755); err != nil {
+		return fmt.Errorf("runway: couldn't create output directory: %w", err)
 	}
-	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("runway: couldn't read response body: %w", err)
-	}
-	c.log("runway: response %s %s %d %s", method, path, resp.StatusCode, string(respBody))
-	if resp.StatusCode != http.StatusOK {
-		errMessage := string(respBody)
-		if len(errMessage) > 100 {
-			errMessage = errMessage[:100] + "..."
-		}
-		_ = os.WriteFile(fmt.Sprintf("logs/debug_%s.json", time.Now().Format("20060102_150405")), respBody, 0644)
-		return fmt.Errorf("runway: %s %s returned (%s): %w", method, u, errMessage, errStatusCode(resp.StatusCode))
-	}
-	if out != nil {
-		if err := json.Unmarshal(respBody, out); err != nil {
-			// Write response body to file for debugging.
-			_ = os.WriteFile(fmt.Sprintf("logs/debug_%s.json", time.Now().Format("20060102_150405")), respBody, 0644)
-			return fmt.Errorf("runway: couldn't unmarshal response body (%T): %w", out, err)
-		}
+	if err := os.WriteFile(output, b, 0644); err != nil {
+		return fmt.Errorf("runway: couldn't write video to file: %w", err)
 	}
 	return nil
-}
-
-func (c *Client) addHeaders(req *http.Request, contentType string, uploadLen int) {
-	if uploadLen > 0 {
-		req.Header.Set("Accept", "*/*")
-		req.Header.Set("Content-Length", fmt.Sprintf("%d", uploadLen))
-		req.Header.Set("Sec-Fetch-Site", "cross-site")
-	} else {
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
-		req.Header.Set("Sec-Fetch-Site", "same-site")
-	}
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Origin", "https://app.runwayml.com")
-	req.Header.Set("Referer", "https://app.runwayml.com/")
-	req.Header.Set("Sec-Ch-Ua", `"Not.A/Brand";v="8", "Chromium";v="114", "Microsoft Edge";v="114"`)
-	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
-	req.Header.Set("Sec-Ch-Ua-Platform", "\"Windows\"")
-	req.Header.Set("Sec-Fetch-Dest", "empty")
-	req.Header.Set("Sec-Fetch-Mode", "cors")
-	// TODO: Add sentry trace if needed.
-	// req.Header.Set("Sentry-Trace", "TODO")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.82")
 }
