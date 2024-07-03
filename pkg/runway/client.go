@@ -14,8 +14,8 @@ import (
 	"time"
 
 	http "github.com/bogdanfinn/fhttp"
-	"github.com/igolaizola/vidai/pkg/fhttp"
-	"github.com/igolaizola/vidai/pkg/ratelimit"
+	"github.com/igopr/vidai/pkg/fhttp"
+	"github.com/igopr/vidai/pkg/ratelimit"
 )
 
 type Client struct {

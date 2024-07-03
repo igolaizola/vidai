@@ -6,22 +6,22 @@ This is a CLI tool for [RunwayML Gen-2](https://runwayml.com/) that adds some ex
 
 > 📢 Connect with us! Join our Telegram group for support and collaboration: [t.me/igohub](https://t.me/igohub)
 
-## 🚀 Features 
+## 🚀 Features
 
- - Generate videos directly from the command line using a text or image prompt.
- - Use RunwayML's extend feature to generate longer videos.
- - Create or extend videos longer than 4 seconds by reusing the last frame of the video as the input for the next generation.
- - Other handy tools to edit videos, like generating loops or resizing videos.
+- Generate videos directly from the command line using a text or image prompt.
+- Use RunwayML's extend feature to generate longer videos.
+- Create or extend videos longer than 4 seconds by reusing the last frame of the video as the input for the next generation.
+- Other handy tools to edit videos, like generating loops or resizing videos.
 
 ## 📦 Installation
 
 You can use the Golang binary to install **vidai**:
 
 ```bash
-go install github.com/igolaizola/vidai/cmd/vidai@latest
+go install github.com/igopr/vidai/cmd/vidai@latest
 ```
 
-Or you can download the binary from the [releases](https://github.com/igolaizola/vidai/releases)
+Or you can download the binary from the [releases](https://github.com/igopr/vidai/releases)
 
 ## 📋 Requirements
 
@@ -141,10 +141,10 @@ Sponsor me on GitHub:
 
 Or donate to any of my crypto addresses:
 
- - BTC `bc1qvuyrqwhml65adlu0j6l59mpfeez8ahdmm6t3ge`
- - ETH `0x960a7a9cdba245c106F729170693C0BaE8b2fdeD`
- - USDT (TRC20) `TD35PTZhsvWmR5gB12cVLtJwZtTv1nroDU`
- - USDC (BEP20) / BUSD (BEP20) `0x960a7a9cdba245c106F729170693C0BaE8b2fdeD`
- - Monero `41yc4R9d9iZMePe47VbfameDWASYrVcjoZJhJHFaK7DM3F2F41HmcygCrnLptS4hkiJARCwQcWbkW9k1z1xQtGSCAu3A7V4`
+- BTC `bc1qvuyrqwhml65adlu0j6l59mpfeez8ahdmm6t3ge`
+- ETH `0x960a7a9cdba245c106F729170693C0BaE8b2fdeD`
+- USDT (TRC20) `TD35PTZhsvWmR5gB12cVLtJwZtTv1nroDU`
+- USDC (BEP20) / BUSD (BEP20) `0x960a7a9cdba245c106F729170693C0BaE8b2fdeD`
+- Monero `41yc4R9d9iZMePe47VbfameDWASYrVcjoZJhJHFaK7DM3F2F41HmcygCrnLptS4hkiJARCwQcWbkW9k1z1xQtGSCAu3A7V4`
 
 Thanks for your support!
