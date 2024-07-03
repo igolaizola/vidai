@@ -408,16 +408,16 @@ func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) GetAsset(ctx context.Context, id string) (string, error) {
+func (c *Client) GetAsset(ctx context.Context, id string) (string, []string, error) {
 	path := fmt.Sprintf("assets/%s", id)
 	var resp assetResponse
 	if _, err := c.do(ctx, "GET", path, nil, &resp); err != nil {
-		return "", fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
+		return "", nil, fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
 	}
 	if resp.Asset.URL == "" {
-		return "", fmt.Errorf("runway: empty asset url")
+		return "", nil, fmt.Errorf("runway: empty asset url")
 	}
-	return resp.Asset.URL, nil
+	return resp.Asset.URL, resp.Asset.PreviewURLs, nil
 }
 
 func (c *Client) Download(ctx context.Context, u, output string) error {
