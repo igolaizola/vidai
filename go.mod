@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/bogdanfinn/fhttp v0.5.28
 	github.com/bogdanfinn/tls-client v1.7.5
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/peterbourgon/ff/v3 v3.3.0
 )
 

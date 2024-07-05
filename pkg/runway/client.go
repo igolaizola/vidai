@@ -14,16 +14,18 @@ import (
 	"time"
 
 	http "github.com/bogdanfinn/fhttp"
+	"github.com/golang-jwt/jwt"
 	"github.com/igopr/vidai/pkg/fhttp"
 	"github.com/igopr/vidai/pkg/ratelimit"
 )
 
 type Client struct {
-	client    fhttp.Client
-	debug     bool
-	ratelimit ratelimit.Lock
-	token     string
-	teamID    int
+	client     fhttp.Client
+	debug      bool
+	ratelimit  ratelimit.Lock
+	token      string
+	expiration time.Time
+	teamID     int
 }
 
 type Config struct {
@@ -33,18 +35,37 @@ type Config struct {
 	Proxy string
 }
 
-func New(cfg *Config) *Client {
+func New(cfg *Config) (*Client, error) {
 	wait := cfg.Wait
 	if wait == 0 {
 		wait = 1 * time.Second
 	}
+	// Parse the JWT
+	parser := jwt.Parser{}
+	t, _, err := parser.ParseUnverified(cfg.Token, jwt.MapClaims{})
+	if err != nil {
+		return nil, fmt.Errorf("runway: couldn't parse token: %w", err)
+	}
+	claims, ok := t.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("runway: couldn't parse claims: %w", err)
+	}
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("runway: couldn't parse expiration: %w", err)
+	}
+	expiration := time.Unix(int64(exp), 0)
+	if expiration.Before(time.Now()) {
+		return nil, fmt.Errorf("runway: token expired")
+	}
 	client := fhttp.NewClient(2*time.Minute, true, cfg.Proxy)
 	return &Client{
-		client:    client,
-		ratelimit: ratelimit.New(wait),
-		debug:     cfg.Debug,
-		token:     cfg.Token,
-	}
+		client:     client,
+		ratelimit:  ratelimit.New(wait),
+		debug:      cfg.Debug,
+		token:      cfg.Token,
+		expiration: expiration,
+	}, nil
 }
 
 func (c *Client) log(format string, args ...interface{}) {
@@ -61,6 +82,9 @@ var backoff = []time.Duration{
 }
 
 func (c *Client) do(ctx context.Context, method, path string, in, out any) ([]byte, error) {
+	if time.Now().After(c.expiration) {
+		return nil, fmt.Errorf("runway: token expired")
+	}
 	maxAttempts := 3
 	attempts := 0
 	var err error

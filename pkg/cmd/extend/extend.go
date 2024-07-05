@@ -40,12 +40,15 @@ func Run(ctx context.Context, cfg *Config) error {
 	if cfg.Token == "" {
 		return fmt.Errorf("token is required")
 	}
-	client := runway.New(&runway.Config{
+	client, err := runway.New(&runway.Config{
 		Token: cfg.Token,
 		Wait:  cfg.Wait,
 		Debug: cfg.Debug,
 		Proxy: cfg.Proxy,
 	})
+	if err != nil {
+		return fmt.Errorf("vidai: couldn't create client: %w", err)
+	}
 
 	base := strings.TrimSuffix(filepath.Base(cfg.Input), filepath.Ext(cfg.Input))
 
