@@ -28,6 +28,7 @@ type Config struct {
 	Watermark   bool
 	Width       int
 	Height      int
+	Explore     bool
 }
 
 // Run generates a video from an image and a text prompt.
@@ -71,6 +72,7 @@ func Run(ctx context.Context, cfg *Config) error {
 		Extend:      false,
 		Width:       cfg.Width,
 		Height:      cfg.Height,
+		ExploreMode: cfg.Explore,
 	})
 	if err != nil {
 		return fmt.Errorf("vidai: couldn't generate video: %w", err)

@@ -82,6 +82,7 @@ func newGenerateCommand() *ffcli.Command {
 	fs.BoolVar(&cfg.Watermark, "watermark", false, "add watermark (optional)")
 	fs.IntVar(&cfg.Width, "width", 0, "output video width (optional)")
 	fs.IntVar(&cfg.Height, "height", 0, "output video height (optional)")
+	fs.BoolVar(&cfg.Explore, "explore", false, "explore mode (optional)")
 
 	return &ffcli.Command{
 		Name:       cmd,
@@ -115,6 +116,7 @@ func newExtendCommand() *ffcli.Command {
 	fs.BoolVar(&cfg.Interpolate, "interpolate", true, "interpolate frames (optional)")
 	fs.BoolVar(&cfg.Upscale, "upscale", false, "upscale frames (optional)")
 	fs.BoolVar(&cfg.Watermark, "watermark", false, "add watermark (optional)")
+	fs.BoolVar(&cfg.Explore, "explore", false, "explore mode (optional)")
 
 	return &ffcli.Command{
 		Name:       cmd,

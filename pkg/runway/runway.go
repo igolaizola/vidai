@@ -254,6 +254,7 @@ type GenerateRequest struct {
 	Extend      bool
 	Width       int
 	Height      int
+	ExploreMode bool
 }
 
 func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generation, error) {
@@ -316,7 +317,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				},
 				Name:           name,
 				AssetGroupName: "Generative Video",
-				ExploreMode:    false,
+				ExploreMode:    cfg.ExploreMode,
 			},
 			AsTeamID: c.teamID,
 		}
@@ -333,7 +334,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				Seconds:        10,
 				TextPrompt:     cfg.Prompt,
 				Seed:           seed,
-				ExploreMode:    false,
+				ExploreMode:    cfg.ExploreMode,
 				Watermark:      cfg.Watermark,
 				EnhancePrompt:  true,
 				Width:          width,

@@ -27,6 +27,7 @@ type Config struct {
 	Interpolate bool
 	Upscale     bool
 	Watermark   bool
+	Explore     bool
 }
 
 // Run generates a video from an image and a text prompt.
@@ -94,6 +95,7 @@ func Run(ctx context.Context, cfg *Config) error {
 			Upscale:     cfg.Upscale,
 			Watermark:   cfg.Watermark,
 			Extend:      false,
+			ExploreMode: cfg.Explore,
 		})
 		if err != nil {
 			return fmt.Errorf("vidai: couldn't generate video: %w", err)
