@@ -367,7 +367,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				URL:         artifact.URL,
 				PreviewURLs: artifact.PreviewURLs,
 			}, nil
-		case "PENDING", "RUNNING":
+		case "PENDING", "RUNNING", "THROTTLED":
 			c.log("runway: task %s: %s", taskResp.Task.ID, taskResp.Task.ProgressRatio)
 		default:
 			return nil, fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
