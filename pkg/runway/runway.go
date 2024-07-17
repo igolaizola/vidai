@@ -3,6 +3,7 @@ package runway
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -192,21 +193,32 @@ type gen3Options struct {
 }
 
 type taskResponse struct {
-	Task struct {
-		ID                          string      `json:"id"`
-		Name                        string      `json:"name"`
-		CreatedAt                   string      `json:"createdAt"`
-		UpdatedAt                   string      `json:"updatedAt"`
-		TaskType                    string      `json:"taskType"`
-		Options                     any         `json:"options"`
-		Status                      string      `json:"status"`
-		ProgressText                string      `json:"progressText"`
-		ProgressRatio               string      `json:"progressRatio"`
-		PlaceInLine                 int         `json:"placeInLine"`
-		EstimatedTimeToStartSeconds float64     `json:"estimatedTimeToStartSeconds"`
-		Artifacts                   []artifact  `json:"artifacts"`
-		SharedAsset                 interface{} `json:"sharedAsset"`
-	} `json:"task"`
+	Task taskData `json:"task"`
+}
+
+type taskData struct {
+	ID                          string      `json:"id"`
+	Name                        string      `json:"name"`
+	CreatedAt                   string      `json:"createdAt"`
+	UpdatedAt                   string      `json:"updatedAt"`
+	TaskType                    string      `json:"taskType"`
+	Options                     any         `json:"options"`
+	Status                      string      `json:"status"`
+	Error                       taskError   `json:"error"`
+	ProgressText                string      `json:"progressText"`
+	ProgressRatio               string      `json:"progressRatio"`
+	PlaceInLine                 int         `json:"placeInLine"`
+	EstimatedTimeToStartSeconds float64     `json:"estimatedTimeToStartSeconds"`
+	Artifacts                   []artifact  `json:"artifacts"`
+	SharedAsset                 interface{} `json:"sharedAsset"`
+}
+
+type taskError struct {
+	ErrorMessage       string `json:"errorMessage"`
+	Reason             string `json:"reason"`
+	Message            string `json:"message"`
+	ModerationCategory string `json:"moderation_category"`
+	TallyAsimov        bool   `json:"tally_asimov"`
 }
 
 type artifact struct {
@@ -255,6 +267,30 @@ type GenerateRequest struct {
 	Width       int
 	Height      int
 	ExploreMode bool
+}
+
+type Error struct {
+	data taskData
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("runway: task %s %q (%q, %q)", e.data.Status, e.data.Error.Message, e.data.Error.Reason, e.data.Error.ModerationCategory)
+}
+
+func (e *Error) Debug() string {
+	js, _ := json.Marshal(e.data)
+	return string(js)
+}
+
+func (e *Error) Temporary() bool {
+	switch e.data.Error.Reason {
+	case "SAFETY.INPUT.TEXT":
+		return false
+	case "":
+		return true
+	default:
+		return false
+	}
 }
 
 func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generation, error) {
@@ -316,7 +352,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 					Height:         height,
 				},
 				Name:           name,
-				AssetGroupName: "Generative Video",
+				AssetGroupName: c.folder,
 				ExploreMode:    cfg.ExploreMode,
 			},
 			AsTeamID: c.teamID,
@@ -339,7 +375,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				EnhancePrompt:  true,
 				Width:          width,
 				Height:         height,
-				AssetGroupName: "Generative Video",
+				AssetGroupName: c.folder,
 			},
 			AsTeamID: c.teamID,
 		}
@@ -370,7 +406,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		case "PENDING", "RUNNING", "THROTTLED":
 			c.log("runway: task %s: %s", taskResp.Task.ID, taskResp.Task.ProgressRatio)
 		default:
-			return nil, fmt.Errorf("runway: task failed: %s", taskResp.Task.Status)
+			return nil, &Error{data: taskResp.Task}
 		}
 
 		select {

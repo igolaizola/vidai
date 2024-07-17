@@ -26,19 +26,25 @@ type Client struct {
 	token      string
 	expiration time.Time
 	teamID     int
+	folder     string
 }
 
 type Config struct {
-	Token string
-	Wait  time.Duration
-	Debug bool
-	Proxy string
+	Token  string
+	Wait   time.Duration
+	Debug  bool
+	Proxy  string
+	Folder string
 }
 
 func New(cfg *Config) (*Client, error) {
 	wait := cfg.Wait
 	if wait == 0 {
 		wait = 1 * time.Second
+	}
+	folder := cfg.Folder
+	if folder == "" {
+		folder = "Generative Video"
 	}
 	// Parse the JWT
 	parser := jwt.Parser{}
@@ -65,6 +71,7 @@ func New(cfg *Config) (*Client, error) {
 		debug:      cfg.Debug,
 		token:      cfg.Token,
 		expiration: expiration,
+		folder:     folder,
 	}, nil
 }
 
