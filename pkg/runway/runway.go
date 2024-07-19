@@ -423,7 +423,8 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		}
 
 		path := fmt.Sprintf("tasks/%s?asTeamId=%d", taskResp.Task.ID, c.teamID)
-		if _, err := c.do(ctx, "GET", path, nil, &taskResp); err != nil {
+		b, err = c.do(ctx, "GET", path, nil, &taskResp)
+		if err != nil {
 			return nil, fmt.Errorf("runway: couldn't get task: %w", err)
 		}
 	}
