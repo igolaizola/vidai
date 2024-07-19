@@ -3,7 +3,6 @@ package runway
 import (
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -271,6 +270,7 @@ type GenerateRequest struct {
 
 type Error struct {
 	data taskData
+	raw  []byte
 }
 
 func (e *Error) Error() string {
@@ -278,15 +278,21 @@ func (e *Error) Error() string {
 }
 
 func (e *Error) Debug() string {
-	js, _ := json.Marshal(e.data)
-	return string(js)
+	return string(e.raw)
+}
+
+func (e *Error) Reason() string {
+	return e.data.Error.Reason
 }
 
 func (e *Error) Temporary() bool {
-	switch e.data.Error.Reason {
-	case "SAFETY.INPUT.TEXT":
+	r := e.data.Error.Reason
+	switch {
+	case r == "SAFETY.INPUT.TEXT":
 		return false
-	case "":
+	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."):
+		return true
+	case r == "":
 		return true
 	default:
 		return false
@@ -383,7 +389,8 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		return nil, fmt.Errorf("runway: unknown model %s", cfg.Model)
 	}
 	var taskResp taskResponse
-	if _, err := c.do(ctx, "POST", "tasks", createReq, &taskResp); err != nil {
+	b, err := c.do(ctx, "POST", "tasks", createReq, &taskResp)
+	if err != nil {
 		return nil, fmt.Errorf("runway: couldn't create task: %w", err)
 	}
 
@@ -406,7 +413,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		case "PENDING", "RUNNING", "THROTTLED":
 			c.log("runway: task %s: %s", taskResp.Task.ID, taskResp.Task.ProgressRatio)
 		default:
-			return nil, &Error{data: taskResp.Task}
+			return nil, &Error{data: taskResp.Task, raw: b}
 		}
 
 		select {
