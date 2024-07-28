@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -252,6 +253,7 @@ type artifact struct {
 type Generation struct {
 	ID          string   `json:"id"`
 	URL         string   `json:"url"`
+	S3URL       string   `json:"s3Url"`
 	PreviewURLs []string `json:"previewUrls"`
 }
 
@@ -405,9 +407,14 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			if artifact.URL == "" {
 				return nil, fmt.Errorf("runway: empty artifact url")
 			}
+			s3URL, err := ToS3URL(artifact.URL)
+			if err != nil {
+				return nil, err
+			}
 			return &Generation{
 				ID:          artifact.ID,
 				URL:         artifact.URL,
+				S3URL:       s3URL,
 				PreviewURLs: artifact.PreviewURLs,
 			}, nil
 		case "PENDING", "RUNNING", "THROTTLED":
@@ -453,16 +460,22 @@ func (c *Client) DeleteAsset(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) GetAsset(ctx context.Context, id string) (string, []string, error) {
+func (c *Client) GetAsset(ctx context.Context, id string) (string, string, []string, error) {
 	path := fmt.Sprintf("assets/%s", id)
 	var resp assetResponse
 	if _, err := c.do(ctx, "GET", path, nil, &resp); err != nil {
-		return "", nil, fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
+		return "", "", nil, fmt.Errorf("runway: couldn't get asset %s: %w", id, err)
 	}
 	if resp.Asset.URL == "" {
-		return "", nil, fmt.Errorf("runway: empty asset url")
+		return "", "", nil, fmt.Errorf("runway: empty asset url")
 	}
-	return resp.Asset.URL, resp.Asset.PreviewURLs, nil
+
+	// Find the UUID in the URL
+	s3URL, err := ToS3URL(resp.Asset.URL)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("runway: couldn't convert asset URL to AWS URL: %w", err)
+	}
+	return s3URL, resp.Asset.URL, resp.Asset.PreviewURLs, nil
 }
 
 func (c *Client) Download(ctx context.Context, u, output string) error {
@@ -478,4 +491,15 @@ func (c *Client) Download(ctx context.Context, u, output string) error {
 		return fmt.Errorf("runway: couldn't write video to file: %w", err)
 	}
 	return nil
+}
+
+var uuidRegex = regexp.MustCompile(`[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}`)
+
+func ToS3URL(u string) (string, error) {
+	// Find the UUID in the URL
+	uuid := uuidRegex.FindString(u)
+	if uuid == "" {
+		return "", fmt.Errorf("runway: couldn't find UUID in asset URL")
+	}
+	return fmt.Sprintf("https://runway-task-artifacts.s3.amazonaws.com/%s.mp4", uuid), nil
 }
