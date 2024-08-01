@@ -83,9 +83,9 @@ func (c *Client) log(format string, args ...interface{}) {
 }
 
 var backoff = []time.Duration{
-	30 * time.Second,
-	1 * time.Minute,
-	2 * time.Minute,
+	5 * time.Minute,
+	9 * time.Minute,
+	27 * time.Minute,
 }
 
 func (c *Client) do(ctx context.Context, method, path string, in, out any) ([]byte, error) {
