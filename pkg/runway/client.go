@@ -152,6 +152,7 @@ func (c *Client) doAttempt(ctx context.Context, method, path string, in, out any
 	var body []byte
 	var reqBody io.Reader
 	contentType := "application/json"
+	var logBody string
 	if f, ok := in.(*uploadFile); ok {
 		body = f.data
 		ext := f.extension
@@ -160,6 +161,7 @@ func (c *Client) doAttempt(ctx context.Context, method, path string, in, out any
 		}
 		contentType = fmt.Sprintf("image/%s", ext)
 		reqBody = bytes.NewReader(body)
+		logBody = fmt.Sprintf("%d bytes", len(body))
 	} else if in != nil {
 		var err error
 		body, err = json.Marshal(in)
@@ -167,11 +169,8 @@ func (c *Client) doAttempt(ctx context.Context, method, path string, in, out any
 			return nil, fmt.Errorf("runway: couldn't marshal request body: %w", err)
 		}
 		reqBody = bytes.NewReader(body)
+		logBody = string(body)
 	}
-	logBody := string(body)
-	/*if len(logBody) > 100 {
-		logBody = logBody[:100] + "..."
-	}*/
 	c.log("runway: do %s %s %s", method, path, logBody)
 
 	// Check if path is absolute
@@ -199,7 +198,12 @@ func (c *Client) doAttempt(ctx context.Context, method, path string, in, out any
 	if err != nil {
 		return nil, fmt.Errorf("runway: couldn't read response body: %w", err)
 	}
-	c.log("runway: response %s %s %d %s", method, path, resp.StatusCode, string(respBody))
+
+	logResp := string(respBody)
+	if method == "GET" && (strings.Contains(path, "amazonaws.com") || strings.Contains(path, "cloudfront.net")) {
+		logResp = fmt.Sprintf("%d bytes", len(respBody))
+	}
+	c.log("runway: response %s %s %d %s", method, path, resp.StatusCode, logResp)
 	if resp.StatusCode != http.StatusOK {
 		errMessage := string(respBody)
 		if len(errMessage) > 100 {

@@ -50,14 +50,15 @@ func Run(ctx context.Context, cfg *Config) error {
 	}
 
 	var imageURL string
+	var fileName string
 	if cfg.Image != "" {
 		b, err := os.ReadFile(cfg.Image)
 		if err != nil {
 			return fmt.Errorf("vidai: couldn't read image: %w", err)
 		}
-		name := filepath.Base(cfg.Image)
+		fileName = filepath.Base(cfg.Image)
 
-		imageURL, err = client.Upload(ctx, name, b)
+		imageURL, err = client.Upload(ctx, fileName, b)
 		if err != nil {
 			return fmt.Errorf("vidai: couldn't upload image: %w", err)
 		}
@@ -65,6 +66,7 @@ func Run(ctx context.Context, cfg *Config) error {
 	gen, err := client.Generate(ctx, &runway.GenerateRequest{
 		Model:       cfg.Model,
 		AssetURL:    imageURL,
+		AssetName:   fileName,
 		Prompt:      cfg.Text,
 		Interpolate: cfg.Interpolate,
 		Upscale:     cfg.Upscale,

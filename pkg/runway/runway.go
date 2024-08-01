@@ -187,8 +187,10 @@ type gen3Options struct {
 	ExploreMode    bool   `json:"exploreMode"`
 	Watermark      bool   `json:"watermark"`
 	EnhancePrompt  bool   `json:"enhance_prompt"`
-	Width          int    `json:"width"`
-	Height         int    `json:"height"`
+	Width          int    `json:"width,omitempty"`
+	Height         int    `json:"height,omitempty"`
+	Resolution     string `json:"resolution,omitempty"`
+	InitImage      string `json:"init_image,omitempty"`
 	AssetGroupName string `json:"assetGroupName"`
 }
 
@@ -260,6 +262,7 @@ type Generation struct {
 type GenerateRequest struct {
 	Model       string
 	AssetURL    string
+	AssetName   string
 	Prompt      string
 	Interpolate bool
 	Upscale     bool
@@ -318,11 +321,17 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		imageURL = cfg.AssetURL
 	}
 
-	width := cfg.Width
-	height := cfg.Height
-	if width == 0 || height == 0 {
-		width = 1280
-		height = 768
+	var width, height int
+	var resolution string
+	if len(imageURL) == 0 {
+		width = cfg.Width
+		height = cfg.Height
+		if width == 0 || height == 0 {
+			width = 1280
+			height = 768
+		}
+	} else {
+		resolution = "720p"
 	}
 
 	// Create task
@@ -330,9 +339,21 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 	switch cfg.Model {
 	case "gen2":
 		name := fmt.Sprintf("Gen-2 %d, %s", seed, cfg.Prompt)
-		if len(name) > 44 {
-			name = name[:44]
+		if len(cfg.Prompt) > 0 {
+			v := cfg.Prompt
+			if len(v) > 20 {
+				v = v[:20]
+			}
+			name = fmt.Sprintf("%s, %s", name, v)
 		}
+		if len(cfg.AssetName) > 0 {
+			v := cfg.AssetName
+			if len(v) > 20 {
+				v = v[:20]
+			}
+			name = fmt.Sprintf("%s, %s", name, v)
+		}
+
 		createReq = &createGen2TaskRequest{
 			TaskType: "gen2",
 			Internal: false,
@@ -366,12 +387,23 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			AsTeamID: c.teamID,
 		}
 	case "gen3":
-		name := fmt.Sprintf("Gen-3 Alpha %d, %s", seed, cfg.Prompt)
-		if len(name) > 44 {
-			name = name[:44]
+		name := fmt.Sprintf("Gen-3 Alpha %d", seed)
+		if len(cfg.Prompt) > 0 {
+			v := cfg.Prompt
+			if len(v) > 20 {
+				v = v[:20]
+			}
+			name = fmt.Sprintf("%s, %s", name, v)
+		}
+		if len(cfg.AssetName) > 0 {
+			v := cfg.AssetName
+			if len(v) > 20 {
+				v = v[:20]
+			}
+			name = fmt.Sprintf("%s, %s", name, v)
 		}
 		createReq = &createGen3TaskRequest{
-			TaskType: "europa",
+			TaskType: "gen3a",
 			Internal: false,
 			Options: gen3Options{
 				Name:           name,
@@ -383,6 +415,8 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				EnhancePrompt:  true,
 				Width:          width,
 				Height:         height,
+				InitImage:      imageURL,
+				Resolution:     resolution,
 				AssetGroupName: c.folder,
 			},
 			AsTeamID: c.teamID,
