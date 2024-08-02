@@ -80,6 +80,28 @@ type uploadFile struct {
 	extension string
 }
 
+type datasetRequest struct {
+	FileCount        int      `json:"fileCount"`
+	Name             string   `json:"name"`
+	UploadID         string   `json:"uploadId"`
+	PreviewUploadIDs []string `json:"previewUploadIds"`
+	Type             struct {
+		Name        string `json:"name"`
+		Type        string `json:"type"`
+		IsDirectory bool   `json:"isDirectory"`
+	} `json:"type"`
+	AsTeamID int `json:"asTeamId"`
+}
+
+type datasetResponse struct {
+	Dataset struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+		URL  string `json:"url"`
+		// More fields that are not used
+	} `json:"dataset"`
+}
+
 func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, error) {
 	ext := strings.TrimPrefix(".", filepath.Ext(name))
 	file := &uploadFile{
@@ -95,6 +117,7 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 		"DATASET_PREVIEW",
 	}
 	var imageURL string
+	var uploadID, previewUploadID string
 	for _, t := range types {
 		// Get upload URL
 		uploadReq := &uploadRequest{
@@ -133,12 +156,46 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 		if _, err := c.do(ctx, "POST", completeURL, completeReq, &completeResp); err != nil {
 			return "", fmt.Errorf("runway: couldn't complete upload: %w", err)
 		}
+
 		c.log("runway: upload complete %s", completeResp.URL)
 		if completeResp.URL == "" {
 			return "", fmt.Errorf("runway: empty image url for type %s", t)
 		}
 		imageURL = completeResp.URL
+
+		switch t {
+		case "DATASET":
+			uploadID = uploadResp.ID
+		case "DATASET_PREVIEW":
+			previewUploadID = uploadResp.ID
+		}
 	}
+
+	// Dataset request
+	datasetReq := &datasetRequest{
+		FileCount:        1,
+		Name:             name,
+		PreviewUploadIDs: []string{previewUploadID},
+		UploadID:         uploadID,
+		Type: struct {
+			Name        string `json:"name"`
+			Type        string `json:"type"`
+			IsDirectory bool   `json:"isDirectory"`
+		}{
+			Name:        "image",
+			Type:        "image",
+			IsDirectory: false,
+		},
+		AsTeamID: c.teamID,
+	}
+	var datasetResp datasetResponse
+	if _, err := c.do(ctx, "POST", "datasets", datasetReq, &datasetResp); err != nil {
+		return "", fmt.Errorf("runway: couldn't create dataset: %w", err)
+	}
+	if datasetResp.Dataset.URL == "" || datasetResp.Dataset.ID == "" {
+		return "", fmt.Errorf("runway: empty dataset url or id")
+	}
+
 	return imageURL, nil
 }
 
