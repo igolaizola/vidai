@@ -102,7 +102,7 @@ type datasetResponse struct {
 	} `json:"dataset"`
 }
 
-func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, error) {
+func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, string, error) {
 	ext := strings.TrimPrefix(".", filepath.Ext(name))
 	file := &uploadFile{
 		data:      data,
@@ -127,16 +127,16 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 		}
 		var uploadResp uploadResponse
 		if _, err := c.do(ctx, "POST", "uploads", uploadReq, &uploadResp); err != nil {
-			return "", fmt.Errorf("runway: couldn't obtain upload url: %w", err)
+			return "", "", fmt.Errorf("runway: couldn't obtain upload url: %w", err)
 		}
 		if len(uploadResp.UploadURLs) == 0 {
-			return "", fmt.Errorf("runway: no upload urls returned")
+			return "", "", fmt.Errorf("runway: no upload urls returned")
 		}
 
 		// Upload file
 		uploadURL := uploadResp.UploadURLs[0]
 		if _, err := c.do(ctx, "PUT", uploadURL, file, nil); err != nil {
-			return "", fmt.Errorf("runway: couldn't upload file: %w", err)
+			return "", "", fmt.Errorf("runway: couldn't upload file: %w", err)
 		}
 
 		// Complete upload
@@ -154,12 +154,12 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 		}
 		var completeResp uploadCompleteResponse
 		if _, err := c.do(ctx, "POST", completeURL, completeReq, &completeResp); err != nil {
-			return "", fmt.Errorf("runway: couldn't complete upload: %w", err)
+			return "", "", fmt.Errorf("runway: couldn't complete upload: %w", err)
 		}
 
 		c.log("runway: upload complete %s", completeResp.URL)
 		if completeResp.URL == "" {
-			return "", fmt.Errorf("runway: empty image url for type %s", t)
+			return "", "", fmt.Errorf("runway: empty image url for type %s", t)
 		}
 		imageURL = completeResp.URL
 
@@ -190,13 +190,37 @@ func (c *Client) Upload(ctx context.Context, name string, data []byte) (string, 
 	}
 	var datasetResp datasetResponse
 	if _, err := c.do(ctx, "POST", "datasets", datasetReq, &datasetResp); err != nil {
-		return "", fmt.Errorf("runway: couldn't create dataset: %w", err)
+		return "", "", fmt.Errorf("runway: couldn't create dataset: %w", err)
 	}
 	if datasetResp.Dataset.URL == "" || datasetResp.Dataset.ID == "" {
-		return "", fmt.Errorf("runway: empty dataset url or id")
+		return "", "", fmt.Errorf("runway: empty dataset url or id")
 	}
 
-	return imageURL, nil
+	return imageURL, datasetResp.Dataset.ID, nil
+}
+
+type deleteRequest struct {
+	AsTeamID int `json:"asTeamId"`
+}
+
+type deleteResponse struct {
+	Success bool `json:"success"`
+}
+
+func (c *Client) Delete(ctx context.Context, assetID string) error {
+	path := fmt.Sprintf("assets/%s", assetID)
+	req := &deleteRequest{
+		AsTeamID: c.teamID,
+	}
+	var resp deleteResponse
+	b, err := c.do(ctx, "DELETE", path, req, &resp)
+	if err != nil {
+		return fmt.Errorf("runway: couldn't delete asset %s: %w", assetID, err)
+	}
+	if !resp.Success {
+		return fmt.Errorf("runway: couldn't delete asset %s: %s", assetID, string(b))
+	}
+	return nil
 }
 
 type createGen2TaskRequest struct {

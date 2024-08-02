@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,7 @@ type Config struct {
 
 	Output      string
 	Model       string
+	Folder      string
 	Image       string
 	Text        string
 	Extend      int
@@ -40,10 +42,11 @@ func Run(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("token is required")
 	}
 	client, err := runway.New(&runway.Config{
-		Token: cfg.Token,
-		Wait:  cfg.Wait,
-		Debug: cfg.Debug,
-		Proxy: cfg.Proxy,
+		Token:  cfg.Token,
+		Wait:   cfg.Wait,
+		Debug:  cfg.Debug,
+		Proxy:  cfg.Proxy,
+		Folder: cfg.Folder,
 	})
 	if err != nil {
 		return fmt.Errorf("vidai: couldn't create client: %w", err)
@@ -58,10 +61,19 @@ func Run(ctx context.Context, cfg *Config) error {
 		}
 		fileName = filepath.Base(cfg.Image)
 
-		imageURL, err = client.Upload(ctx, fileName, b)
+		var assetID string
+		imageURL, assetID, err = client.Upload(ctx, fileName, b)
 		if err != nil {
 			return fmt.Errorf("vidai: couldn't upload image: %w", err)
 		}
+		defer func() {
+			// Delete asset
+			deleteCTX, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := client.Delete(deleteCTX, assetID); err != nil {
+				log.Println(fmt.Errorf("vidai: couldn't delete asset: %w", err))
+			}
+		}()
 	}
 	gen, err := client.Generate(ctx, &runway.GenerateRequest{
 		Model:       cfg.Model,

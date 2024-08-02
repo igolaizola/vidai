@@ -73,6 +73,7 @@ func newGenerateCommand() *ffcli.Command {
 	fs.StringVar(&cfg.Token, "token", "", "runway token")
 
 	fs.StringVar(&cfg.Model, "model", "gen2", "model to use (gen2 or gen3)")
+	fs.StringVar(&cfg.Folder, "folder", "", "runway folder to store assets (optional)")
 	fs.StringVar(&cfg.Image, "image", "", "source image")
 	fs.StringVar(&cfg.Text, "text", "", "source text")
 	fs.StringVar(&cfg.Output, "output", "", "output file (optional, if omitted it won't be saved)")
@@ -113,6 +114,7 @@ func newExtendCommand() *ffcli.Command {
 	fs.StringVar(&cfg.Output, "output", "", "output file (optional, if omitted it won't be saved)")
 	fs.IntVar(&cfg.N, "n", 1, "extend the video by this many times")
 	fs.StringVar(&cfg.Model, "model", "gen2", "model to use (gen2 or gen3)")
+	fs.StringVar(&cfg.Folder, "folder", "", "runway folder to store assets (optional)")
 	fs.BoolVar(&cfg.Interpolate, "interpolate", true, "interpolate frames (optional)")
 	fs.BoolVar(&cfg.Upscale, "upscale", false, "upscale frames (optional)")
 	fs.BoolVar(&cfg.Watermark, "watermark", false, "add watermark (optional)")
