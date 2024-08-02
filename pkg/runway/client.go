@@ -83,9 +83,9 @@ func (c *Client) log(format string, args ...interface{}) {
 }
 
 var backoff = []time.Duration{
+	1 * time.Minute,
 	5 * time.Minute,
-	9 * time.Minute,
-	27 * time.Minute,
+	15 * time.Minute,
 }
 
 func (c *Client) do(ctx context.Context, method, path string, in, out any) ([]byte, error) {
@@ -119,7 +119,12 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) ([]by
 		if errors.As(err, &errStatus) {
 			switch int(errStatus) {
 			// These errors are retriable but we should wait before retry
-			case http.StatusBadGateway, http.StatusGatewayTimeout, http.StatusTooManyRequests, http.StatusInternalServerError, 520, 522:
+			case http.StatusBadGateway,
+				http.StatusGatewayTimeout,
+				http.StatusTooManyRequests,
+				http.StatusInternalServerError,
+				http.StatusServiceUnavailable,
+				520, 522:
 			default:
 				return nil, err
 			}
