@@ -374,7 +374,7 @@ func (e *Error) Reason() string {
 func (e *Error) Temporary() bool {
 	r := e.data.Error.Reason
 	switch {
-	case r == "SAFETY.INPUT.TEXT":
+	case r == "SAFETY.INPUT.TEXT", r == "SAFETY.INPUT.IMAGE":
 		return false
 	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."):
 		return true
