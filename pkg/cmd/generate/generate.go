@@ -31,6 +31,7 @@ type Config struct {
 	Width       int
 	Height      int
 	Explore     bool
+	LastFrame   bool
 }
 
 // Run generates a video from an image and a text prompt.
@@ -87,6 +88,7 @@ func Run(ctx context.Context, cfg *Config) error {
 		Width:       cfg.Width,
 		Height:      cfg.Height,
 		ExploreMode: cfg.Explore,
+		LastFrame:   cfg.LastFrame,
 	})
 	if err != nil {
 		return fmt.Errorf("vidai: couldn't generate video: %w", err)

@@ -261,18 +261,19 @@ type createGen3TaskRequest struct {
 }
 
 type gen3Options struct {
-	Name           string `json:"name"`
-	Seconds        int    `json:"seconds"`
-	TextPrompt     string `json:"text_prompt"`
-	Seed           int    `json:"seed"`
-	ExploreMode    bool   `json:"exploreMode"`
-	Watermark      bool   `json:"watermark"`
-	EnhancePrompt  bool   `json:"enhance_prompt"`
-	Width          int    `json:"width,omitempty"`
-	Height         int    `json:"height,omitempty"`
-	Resolution     string `json:"resolution,omitempty"`
-	InitImage      string `json:"init_image,omitempty"`
-	AssetGroupName string `json:"assetGroupName"`
+	Name            string `json:"name"`
+	Seconds         int    `json:"seconds"`
+	TextPrompt      string `json:"text_prompt"`
+	Seed            int    `json:"seed"`
+	ExploreMode     bool   `json:"exploreMode"`
+	Watermark       bool   `json:"watermark"`
+	EnhancePrompt   bool   `json:"enhance_prompt"`
+	Width           int    `json:"width,omitempty"`
+	Height          int    `json:"height,omitempty"`
+	Resolution      string `json:"resolution,omitempty"`
+	InitImage       string `json:"init_image,omitempty"`
+	ImageAsEndFrame bool   `json:"image_as_end_frame"`
+	AssetGroupName  string `json:"assetGroupName"`
 }
 
 type taskResponse struct {
@@ -352,6 +353,7 @@ type GenerateRequest struct {
 	Width       int
 	Height      int
 	ExploreMode bool
+	LastFrame   bool
 }
 
 type Error struct {
@@ -487,18 +489,19 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			TaskType: "gen3a",
 			Internal: false,
 			Options: gen3Options{
-				Name:           name,
-				Seconds:        10,
-				TextPrompt:     cfg.Prompt,
-				Seed:           seed,
-				ExploreMode:    cfg.ExploreMode,
-				Watermark:      cfg.Watermark,
-				EnhancePrompt:  true,
-				Width:          width,
-				Height:         height,
-				InitImage:      imageURL,
-				Resolution:     resolution,
-				AssetGroupName: c.folder,
+				Name:            name,
+				Seconds:         10,
+				TextPrompt:      cfg.Prompt,
+				Seed:            seed,
+				ExploreMode:     cfg.ExploreMode,
+				Watermark:       cfg.Watermark,
+				EnhancePrompt:   true,
+				Width:           width,
+				Height:          height,
+				InitImage:       imageURL,
+				Resolution:      resolution,
+				AssetGroupName:  c.folder,
+				ImageAsEndFrame: cfg.LastFrame,
 			},
 			AsTeamID: c.teamID,
 		}

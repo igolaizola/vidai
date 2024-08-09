@@ -84,6 +84,7 @@ func newGenerateCommand() *ffcli.Command {
 	fs.IntVar(&cfg.Width, "width", 0, "output video width (optional)")
 	fs.IntVar(&cfg.Height, "height", 0, "output video height (optional)")
 	fs.BoolVar(&cfg.Explore, "explore", false, "explore mode (optional)")
+	fs.BoolVar(&cfg.LastFrame, "last-frame", false, "use source image as the last frame (optional)")
 
 	return &ffcli.Command{
 		Name:       cmd,
