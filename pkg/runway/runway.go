@@ -378,12 +378,25 @@ func (e *Error) Temporary() bool {
 	switch {
 	case r == "SAFETY.INPUT.TEXT", r == "SAFETY.INPUT.IMAGE":
 		return false
-	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."):
+	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."), r == "SAFETY.OUTPUT.VIDEO":
 		return true
 	case r == "":
 		return true
 	default:
 		return false
+	}
+}
+
+func (e *Error) Unknown() bool {
+	switch e.data.Error.Reason {
+	case "INTERNAL.BAD_OUTPUT.CODE01",
+		"INTERNAL.BAD_OUTPUT.CODE03",
+		"SAFETY.INPUT.TEXT",
+		"SAFETY.INPUT.IMAGE",
+		"SAFETY.OUTPUT.VIDEO":
+		return false
+	default:
+		return true
 	}
 }
 
