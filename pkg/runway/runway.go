@@ -381,7 +381,7 @@ func (e *Error) Temporary() bool {
 	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."), r == "SAFETY.OUTPUT.VIDEO":
 		return true
 	case r == "":
-		return true
+		return false
 	default:
 		return false
 	}
