@@ -393,7 +393,8 @@ func (e *Error) Unknown() bool {
 		"INTERNAL.BAD_OUTPUT.CODE03",
 		"SAFETY.INPUT.TEXT",
 		"SAFETY.INPUT.IMAGE",
-		"SAFETY.OUTPUT.VIDEO":
+		"SAFETY.OUTPUT.VIDEO",
+		"":
 		return false
 	default:
 		return true
