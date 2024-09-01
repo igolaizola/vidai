@@ -376,7 +376,7 @@ func (e *Error) Reason() string {
 func (e *Error) Temporary() bool {
 	r := e.data.Error.Reason
 	switch {
-	case r == "SAFETY.INPUT.TEXT", r == "SAFETY.INPUT.IMAGE":
+	case r == "SAFETY.INPUT.TEXT", r == "SAFETY.INPUT.IMAGE", r == "INPUT_PREPROCESSING.SAFETY.TEXT":
 		return false
 	case strings.HasPrefix(r, "INTERNAL.BAD_OUTPUT."), r == "SAFETY.OUTPUT.VIDEO":
 		return true
@@ -394,6 +394,7 @@ func (e *Error) Unknown() bool {
 		"SAFETY.INPUT.TEXT",
 		"SAFETY.INPUT.IMAGE",
 		"SAFETY.OUTPUT.VIDEO",
+		"INPUT_PREPROCESSING.SAFETY.TEXT",
 		"":
 		return false
 	default:
