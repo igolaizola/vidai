@@ -3,8 +3,11 @@ package runway
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -395,6 +398,7 @@ func (e *Error) Unknown() bool {
 		"SAFETY.INPUT.IMAGE",
 		"SAFETY.OUTPUT.VIDEO",
 		"INPUT_PREPROCESSING.SAFETY.TEXT",
+		"Text prompt did not pass moderation",
 		"":
 		return false
 	default:
@@ -526,6 +530,21 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 	var taskResp taskResponse
 	b, err := c.do(ctx, "POST", "tasks", createReq, &taskResp)
 	if err != nil {
+		var statusErr errStatusCode
+		if errors.As(err, &statusErr) {
+			// Check if the error is a bad request
+			if statusErr == http.StatusBadRequest {
+				type errorResponse struct {
+					Error string `json:"error"`
+				}
+				var resp errorResponse
+				msg := string(b)
+				if err := json.Unmarshal(b, &resp); err == nil && resp.Error != "" {
+					msg = resp.Error
+				}
+				return nil, &Error{raw: b, data: taskData{Error: taskError{Reason: msg}}}
+			}
+		}
 		return nil, fmt.Errorf("runway: couldn't create task: %w", err)
 	}
 
