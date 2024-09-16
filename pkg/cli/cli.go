@@ -72,7 +72,7 @@ func newGenerateCommand() *ffcli.Command {
 	fs.DurationVar(&cfg.Wait, "wait", 2*time.Second, "wait time between requests")
 	fs.StringVar(&cfg.Token, "token", "", "runway token")
 
-	fs.StringVar(&cfg.Model, "model", "gen2", "model to use (gen2 or gen3)")
+	fs.StringVar(&cfg.Model, "model", "gen3", "model to use (gen2, gen3, gen3-turbo)")
 	fs.StringVar(&cfg.Folder, "folder", "", "runway folder to store assets (optional)")
 	fs.StringVar(&cfg.Image, "image", "", "source image")
 	fs.StringVar(&cfg.Text, "text", "", "source text")

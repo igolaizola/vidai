@@ -488,7 +488,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			},
 			AsTeamID: c.teamID,
 		}
-	case "gen3":
+	case "gen3", "gen3-turbo":
 		name := fmt.Sprintf("Gen-3 Alpha %d", seed)
 		if len(cfg.Prompt) > 0 {
 			v := cfg.Prompt
@@ -504,8 +504,12 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			}
 			name = fmt.Sprintf("%s, %s", name, v)
 		}
+		taskType := "gen3a"
+		if cfg.Model == "gen3-turbo" {
+			taskType = "gen3a_turbo"
+		}
 		createReq = &createGen3TaskRequest{
-			TaskType: "gen3a",
+			TaskType: taskType,
 			Internal: false,
 			Options: gen3Options{
 				Name:            name,
