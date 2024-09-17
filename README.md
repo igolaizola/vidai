@@ -2,16 +2,19 @@
 
 **vidai** generates videos using AI.
 
-This is a CLI tool for [RunwayML Gen-2](https://runwayml.com/) that adds some extra features on top of it.
+This is a CLI tool for [RunwayML](https://runwayml.com/) that adds some extra features on top of it.
+It now also supports Gen3 and Gen3 Turbo models!
 
 > 📢 Connect with us! Join our Telegram group for support and collaboration: [t.me/igohub](https://t.me/igohub)
 
 ## 🚀 Features
 
 - Generate videos directly from the command line using a text or image prompt.
+- Support for RunwayML Gen-2, Gen3, and Gen3 Turbo models.
 - Use RunwayML's extend feature to generate longer videos.
-- Create or extend videos longer than 4 seconds by reusing the last frame of the video as the input for the next generation.
-- Other handy tools to edit videos, like generating loops or resizing videos.
+- Create or extend videos longer than 10 seconds by reusing the last frame of the video as the input for the next generation.
+- Other handy tools to edit videos, like generating loops.
+- Explore mode for unlimited generations (credit mode is used by default).
 
 ## 📦 Installation
 
@@ -33,28 +36,28 @@ To create extended videos, you need to have [ffmpeg](https://ffmpeg.org/) instal
 
 ### Some examples
 
-Generate a video from an image prompt:
+Generate a video using Gen3 Turbo model from an image prompt:
 
 ```bash
-vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4
+vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4 --model gen3-turbo
 ```
 
-Generate a video from a text prompt:
+Generate a video using Gen3 model from a text prompt:
 
 ```bash
-vidai generate --token RUNWAYML_TOKEN --text "a car in the middle of the road" --output car.mp4
+vidai generate --token RUNWAYML_TOKEN --text "a car in the middle of the road" --output car.mp4 --model gen3
 ```
 
-Generate a video from a image prompt and extend it twice (using RunwayML's extend feature):
+Generate a video from an image prompt with additional options:
 
 ```bash
-vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4 --extend 2
+vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4 --interpolate --upscale --watermark --width 1024 --height 576 --explore
 ```
 
-Extend a video by reusing the last frame twice:
+Extend a video by reusing the last frame multiple times:
 
 ```bash
-vidai extend --input car.mp4 --output car-extended.mp4 --n 2
+vidai extend --token RUNWAYML_TOKEN --input car.mp4 --output car-extended.mp4 --n 3
 ```
 
 Convert a video to a loop:
@@ -90,7 +93,11 @@ vidai generate --config vidai.conf
 token RUNWAYML_TOKEN
 image car.jpg
 output car.mp4
-extend 2
+model gen3-turbo
+interpolate true
+upscale true
+watermark false
+explore true
 ```
 
 Using environment variables (`VIDAI` prefix, uppercase and underscores):
@@ -99,14 +106,18 @@ Using environment variables (`VIDAI` prefix, uppercase and underscores):
 export VIDAI_TOKEN=RUNWAYML_TOKEN
 export VIDAI_IMAGE="car.jpg"
 export VIDAI_OUTPUT="car.mp4"
-export VIDAI_EXTEND=2
+export VIDAI_MODEL="gen3-turbo"
+export VIDAI_INTERPOLATE=true
+export VIDAI_UPSCALE=true
+export VIDAI_WATERMARK=false
+export VIDAI_EXPLORE=true
 vidai generate
 ```
 
 Using command line arguments:
 
 ```bash
-vidai generate --token RUNWAYML_TOKEN --image car.jpg --video car.mp4 --extend 2
+vidai generate --token RUNWAYML_TOKEN --image car.jpg --output car.mp4 --model gen3 --interpolate --upscale --explore
 ```
 
 ## ⚠️ Disclaimer
