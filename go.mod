@@ -1,6 +1,8 @@
 module github.com/igolaizola/vidai
 
-go 1.20
+go 1.21
+
+toolchain go1.22.5
 
 require (
 	github.com/bogdanfinn/fhttp v0.5.28
