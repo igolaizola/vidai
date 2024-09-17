@@ -15,8 +15,8 @@ import (
 
 	http "github.com/bogdanfinn/fhttp"
 	"github.com/golang-jwt/jwt"
-	"github.com/igopr/vidai/pkg/fhttp"
-	"github.com/igopr/vidai/pkg/ratelimit"
+	"github.com/igolaizola/vidai/pkg/fhttp"
+	"github.com/igolaizola/vidai/pkg/ratelimit"
 )
 
 type Client struct {

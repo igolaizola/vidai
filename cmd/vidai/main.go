@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/igopr/vidai/pkg/cli"
+	"github.com/igolaizola/vidai/pkg/cli"
 )
 
 // Build flags

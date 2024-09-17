@@ -1,4 +1,4 @@
-module github.com/igopr/vidai
+module github.com/igolaizola/vidai
 
 go 1.20
 

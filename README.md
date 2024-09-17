@@ -21,10 +21,10 @@ It now also supports Gen3 and Gen3 Turbo models!
 You can use the Golang binary to install **vidai**:
 
 ```bash
-go install github.com/igopr/vidai/cmd/vidai@latest
+go install github.com/igolaizola/vidai/cmd/vidai@latest
 ```
 
-Or you can download the binary from the [releases](https://github.com/igopr/vidai/releases)
+Or you can download the binary from the [releases](https://github.com/igolaizola/vidai/releases)
 
 ## 📋 Requirements
 
