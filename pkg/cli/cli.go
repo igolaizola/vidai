@@ -85,6 +85,7 @@ func newGenerateCommand() *ffcli.Command {
 	fs.IntVar(&cfg.Height, "height", 0, "output video height (optional)")
 	fs.BoolVar(&cfg.Explore, "explore", false, "explore mode (optional)")
 	fs.BoolVar(&cfg.LastFrame, "last-frame", false, "use source image as the last frame (optional)")
+	fs.IntVar(&cfg.Seconds, "seconds", 10, "duration of the video in seconds (optional)")
 
 	return &ffcli.Command{
 		Name:       cmd,
@@ -120,6 +121,7 @@ func newExtendCommand() *ffcli.Command {
 	fs.BoolVar(&cfg.Upscale, "upscale", false, "upscale frames (optional)")
 	fs.BoolVar(&cfg.Watermark, "watermark", false, "add watermark (optional)")
 	fs.BoolVar(&cfg.Explore, "explore", false, "explore mode (optional)")
+	fs.IntVar(&cfg.Seconds, "seconds", 2, "duration of the video in seconds (optional)")
 
 	return &ffcli.Command{
 		Name:       cmd,
