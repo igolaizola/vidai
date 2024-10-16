@@ -32,6 +32,7 @@ type Config struct {
 	Height      int
 	Explore     bool
 	LastFrame   bool
+	Seconds     int
 }
 
 // Run generates a video from an image and a text prompt.
@@ -89,6 +90,7 @@ func Run(ctx context.Context, cfg *Config) error {
 		Height:      cfg.Height,
 		ExploreMode: cfg.Explore,
 		LastFrame:   cfg.LastFrame,
+		Seconds:     cfg.Seconds,
 	})
 	if err != nil {
 		return fmt.Errorf("vidai: couldn't generate video: %w", err)
@@ -104,6 +106,7 @@ func Run(ctx context.Context, cfg *Config) error {
 			Upscale:     cfg.Upscale,
 			Watermark:   cfg.Watermark,
 			Extend:      true,
+			Seconds:     cfg.Seconds,
 		})
 		if err != nil {
 			return fmt.Errorf("vidai: couldn't extend video: %w", err)

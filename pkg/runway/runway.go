@@ -357,6 +357,7 @@ type GenerateRequest struct {
 	Height      int
 	ExploreMode bool
 	LastFrame   bool
+	Seconds     int
 }
 
 type Error struct {
@@ -466,7 +467,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				AssetGroupName string      `json:"assetGroupName"`
 				ExploreMode    bool        `json:"exploreMode"`
 			}{
-				Seconds: 4,
+				Seconds: cfg.Seconds,
 				Gen2Options: gen2Options{
 					Interpolate:    cfg.Interpolate,
 					Seed:           seed,
@@ -513,7 +514,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 			Internal: false,
 			Options: gen3Options{
 				Name:            name,
-				Seconds:         10,
+				Seconds:         cfg.Seconds,
 				TextPrompt:      cfg.Prompt,
 				Seed:            seed,
 				ExploreMode:     cfg.ExploreMode,
