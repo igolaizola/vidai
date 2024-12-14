@@ -273,6 +273,7 @@ type gen3Options struct {
 	EnhancePrompt   bool   `json:"enhance_prompt"`
 	Width           int    `json:"width,omitempty"`
 	Height          int    `json:"height,omitempty"`
+	Flip            bool   `json:"flip,omitempty"`
 	Resolution      string `json:"resolution,omitempty"`
 	InitImage       string `json:"init_image,omitempty"`
 	ImageAsEndFrame bool   `json:"image_as_end_frame"`
@@ -355,6 +356,7 @@ type GenerateRequest struct {
 	Extend      bool
 	Width       int
 	Height      int
+	Portrait    bool
 	ExploreMode bool
 	LastFrame   bool
 	Seconds     int
@@ -426,6 +428,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 
 	var width, height int
 	var resolution string
+	var flip bool
 	if len(imageURL) == 0 {
 		width = cfg.Width
 		height = cfg.Height
@@ -435,6 +438,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 		}
 	} else {
 		resolution = "720p"
+		flip = cfg.Portrait
 	}
 
 	// Create task
@@ -522,6 +526,7 @@ func (c *Client) Generate(ctx context.Context, cfg *GenerateRequest) (*Generatio
 				EnhancePrompt:   true,
 				Width:           width,
 				Height:          height,
+				Flip:            flip,
 				InitImage:       imageURL,
 				Resolution:      resolution,
 				AssetGroupName:  c.folder,

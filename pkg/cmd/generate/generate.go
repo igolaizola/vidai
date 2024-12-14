@@ -30,6 +30,7 @@ type Config struct {
 	Watermark   bool
 	Width       int
 	Height      int
+	Portrait    bool
 	Explore     bool
 	LastFrame   bool
 	Seconds     int
@@ -88,6 +89,7 @@ func Run(ctx context.Context, cfg *Config) error {
 		Extend:      false,
 		Width:       cfg.Width,
 		Height:      cfg.Height,
+		Portrait:    cfg.Portrait,
 		ExploreMode: cfg.Explore,
 		LastFrame:   cfg.LastFrame,
 		Seconds:     cfg.Seconds,
